@@ -1,6 +1,5 @@
-# This is exercise for SPBD week2 with Hadoop and IP addresses 
-• Using the same docker image of lab 1, do the following
-exercises:
+# Hadoop map reduce and IP addresses 
+• Using the same docker image of  1, do the following:
 • Create a new notebook (or set of notebooks) that
 processes the log of web entries using map-reduce to:
 1. Count the number of unique IP addresses involved in the
