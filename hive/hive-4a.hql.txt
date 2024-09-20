@@ -1,0 +1,75 @@
+ -- create internal table
+DROP TABLE taxis_table;
+CREATE  TABLE  taxis_table(
+  Trip_ID CHAR(40), Taxi_ID CHAR(100),    
+  Trip_Start_Timestamp CHAR(40), Trip_End_Timestamp CHAR(40),
+  Trip_Seconds CHAR(20), Trip_Miles CHAR(20), 
+  Pickup_Region_ID CHAR(40), Dropoff_Region_ID CHAR(40),
+  Pickup_Community_Area CHAR(20), Dropoff_Community_Area CHAR(20),
+  Fare CHAR(20), Tips CHAR(20), Tolls CHAR(20), Extras CHAR(20), Trip_Total CHAR(20),
+  Payment_Type CHAR(64), Company CHAR(64), Pickup_Centroid_Latitude CHAR(20),
+  Pickup_Centroid_Longitude CHAR(20), Pickup_Centroid_Location CHAR(64),
+  Dropoff_Centroid_Latitude CHAR(20),Dropoff_Centroid_Longitude CHAR(20), Dropoff_Centroid_Location CHAR(64))
+  ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY "\;";
+ 
+ 
+-- load data into table from localfile (to HIVE) 
+LOAD DATA LOCAL INPATH 'Taxi_Trips_151MB.csv' INTO TABLE taxis_table;
+
+
+-- create view count
+DROP VIEW count; 
+CREATE VIEW count AS SELECT  
+    Pickup_Region_ID,Dropoff_Region_ID, Count(*) AS Total, AVG(Trip_Miles) AS avg_miles 
+    FROM taxis_table
+    WHERE Pickup_Region_ID!="" AND Dropoff_Region_ID!="" AND Trip_Miles!="" AND Trip_Miles!="0"
+    GROUP BY Pickup_Region_ID,Dropoff_Region_ID;
+
+DROP  VIEW Cash; 
+CREATE VIEW Cash AS SELECT  
+    Pickup_Region_ID,Dropoff_Region_ID, CONCAT(ROUND(SUM( CASE WHEN (Payment_Type="Cash") THEN 1 ELSE 0 END )/Count(*),2)*100,"%") AS Cash
+    FROM taxis_table
+    WHERE Pickup_Region_ID!="" AND Dropoff_Region_ID!="" AND Trip_Miles!="" AND Trip_Miles!="0"
+    GROUP BY Pickup_Region_ID,Dropoff_Region_ID;
+
+DROP VIEW Credit_Card; 
+CREATE VIEW Credit_Card AS SELECT  
+    Pickup_Region_ID,Dropoff_Region_ID, CONCAT(ROUND(SUM( CASE WHEN (Payment_Type="Credit Card") THEN 1 ELSE 0 END )/Count(*),2)*100,"%") AS Credit_Card
+    FROM taxis_table
+    WHERE Pickup_Region_ID!="" AND Dropoff_Region_ID!="" AND Trip_Miles!="" AND Trip_Miles!="0"
+    GROUP BY Pickup_Region_ID,Dropoff_Region_ID;
+
+DROP TABLE res4_altl;
+CREATE TABLE res4_altl AS
+SELECT A.Pickup_Region_ID, A.Dropoff_Region_ID, A.Total, B.Cash, C.Credit_Card FROM count as A JOIN Cash AS B 
+    ON A.Pickup_Region_ID=B.Pickup_Region_ID AND A.Dropoff_Region_ID=B.Dropoff_Region_ID JOIN Credit_Card AS C 
+    ON A.Pickup_Region_ID=C.Pickup_Region_ID AND A.Dropoff_Region_ID=C.Dropoff_Region_ID WHERE A.avg_miles>=10 ORDER BY A.Total DESC ;
+
+SELECT * FROM res4_altl LIMIT 10;
+
+
+
+-- save result_table4_long 
+insert overwrite local directory 'Ex4al.csv'
+row format delimited
+fields terminated by ','
+
+SELECT * FROM res4_altl;
+
+DROP TABLE res4_alts;
+CREATE TABLE res4_alts AS
+SELECT A.Pickup_Region_ID, A.Dropoff_Region_ID, A.Total, B.Cash, C.Credit_Card FROM count as A JOIN Cash AS B 
+    ON A.Pickup_Region_ID=B.Pickup_Region_ID AND A.Dropoff_Region_ID=B.Dropoff_Region_ID JOIN Credit_Card AS C 
+    ON A.Pickup_Region_ID=C.Pickup_Region_ID AND A.Dropoff_Region_ID=C.Dropoff_Region_ID WHERE A.avg_miles<10 ORDER BY A.Total DESC ;
+
+SELECT * FROM res4_alts LIMIT 10;
+
+
+
+-- save result_table4_long 
+insert overwrite local directory 'Ex4as.csv'
+row format delimited
+fields terminated by ','
+
+SELECT * FROM res4_alts;

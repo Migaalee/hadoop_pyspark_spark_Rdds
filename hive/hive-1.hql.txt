@@ -1,0 +1,45 @@
+
+
+
+
+-- create internal table
+DROP TABLE taxis_table;
+CREATE  TABLE  taxis_table(
+  Trip_ID CHAR(40), Taxi_ID CHAR(100),    
+  Trip_Start_Timestamp CHAR(40), Trip_End_Timestamp CHAR(40),
+  Trip_Seconds CHAR(20), Trip_Miles CHAR(20), 
+  Pickup_Region_ID CHAR(40), Dropoff_Region_ID CHAR(40),
+  Pickup_Community_Area CHAR(20), Dropoff_Community_Area CHAR(20),
+  Fare CHAR(20), Tips CHAR(20), Tolls CHAR(20), Extras CHAR(20), Trip_Total CHAR(20),
+  Payment_Type CHAR(64), Company CHAR(64), Pickup_Centroid_Latitude CHAR(20),
+  Pickup_Centroid_Longitude CHAR(20), Pickup_Centroid_Location CHAR(64),
+  Dropoff_Centroid_Latitude CHAR(20),Dropoff_Centroid_Longitude CHAR(20), Dropoff_Centroid_Location CHAR(64))
+  ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY "\;";
+ 
+ 
+-- load data into table from localfile (to HIVE) 
+LOAD DATA LOCAL INPATH 'Taxi_Trips_151MB.csv' INTO TABLE taxis_table;
+
+
+
+
+-- process view: month
+DROP VIEW  taxis_tables_month;
+CREATE VIEW   taxis_tables_month AS
+SELECT SUBSTRING(trip_start_timestamp, 1, 2) AS trip_month FROM taxis_table; 
+
+-- create table result 
+DROP TABLE result_table1;
+CREATE TABLE  result_table1 AS
+SELECT trip_month, count(*) AS total_trips from taxis_tables_month  GROUP BY trip_month;
+
+
+SELECT * FROM result_table1;
+
+-- save result_table1 
+insert overwrite local directory 'Ex1.csv'
+row format delimited
+fields terminated by ','
+
+SELECT * FROM result_table1;

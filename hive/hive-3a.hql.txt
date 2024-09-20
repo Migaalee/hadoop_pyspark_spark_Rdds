@@ -1,0 +1,43 @@
+ 
+ 
+-- load data into table from localfile (to HIVE) 
+LOAD DATA LOCAL INPATH 'Taxi_Trips_151MB.csv' INTO TABLE taxis_table;
+
+
+
+-- process view: correcting prices
+DROP VIEW  taxis_table_correct_prices;
+CREATE VIEW   taxis_table_correct_prices AS
+SELECT Trip_Start_Timestamp,Pickup_Region_ID,
+    CASE WHEN (Fare="") THEN 0 ELSE regexp_replace(Fare, ",", "") END AS Fare, 
+    CASE WHEN (Tips="") THEN 0 ELSE regexp_replace(Tips, ",", "") END AS Tips, 
+    CASE WHEN (Tolls="") THEN 0 ELSE regexp_replace(Tolls, ",", "") END AS Tolls,
+    CASE WHEN (Extras="") THEN 0 ELSE regexp_replace(Extras, ",", "") END AS Extras ,
+    CASE WHEN (Trip_Total="") THEN 0 ELSE regexp_replace(Trip_Total, ",", "") END AS Trip_Total 
+    FROM taxis_table;
+
+
+-- second process view: keys and avg costs
+DROP VIEW table_keys;
+CREATE VIEW  table_keys AS
+SELECT Pickup_Region_ID,SUBSTRING(from_unixtime(unix_timestamp(Trip_Start_Timestamp,'MM/dd/yyyy hh:mm:ss aa'),'u')-1,1,1) AS weekday,
+    CONCAT(SUBSTRING(Trip_Start_Timestamp,12,2),SUBSTRING(Trip_Start_Timestamp,-2,2)) AS hour, 
+    CASE WHEN (Fare+Tips+Tolls+Extras!=Trip_Total AND Fare+Tips+Tolls+Extras!=0) THEN Fare+Tips+Tolls+Extras
+    ELSE Trip_Total END AS Cost 
+    FROM taxis_table_correct_prices
+    WHERE (Trip_Total!=0 OR Fare+Tips+Tolls+Extras!=0) AND Pickup_Region_ID!="" ;
+
+-- create table result
+DROP TABLE result_table3; 
+CREATE TABLE  result_table3 AS
+SELECT Pickup_Region_ID,weekday,hour, ROUND(AVG(Cost),2) AS Avg_Cost FROM table_keys GROUP BY Pickup_Region_ID,weekday,hour ORDER BY Avg_Cost DESC;
+
+
+SELECT * FROM result_table3 limit 10;
+
+-- save result_table3 
+insert overwrite local directory 'Ex3a.csv'
+row format delimited
+fields terminated by ','
+
+SELECT * FROM result_table3;

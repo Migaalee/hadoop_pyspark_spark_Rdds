@@ -1,0 +1,64 @@
+ -- create internal table
+DROP TABLE taxis_table;
+CREATE  TABLE  taxis_table(
+  Trip_ID CHAR(40), Taxi_ID CHAR(100),    
+  Trip_Start_Timestamp CHAR(40), Trip_End_Timestamp CHAR(40),
+  Trip_Seconds CHAR(20), Trip_Miles CHAR(20), 
+  Pickup_Region_ID CHAR(40), Dropoff_Region_ID CHAR(40),
+  Pickup_Community_Area CHAR(20), Dropoff_Community_Area CHAR(20),
+  Fare CHAR(20), Tips CHAR(20), Tolls CHAR(20), Extras CHAR(20), Trip_Total CHAR(20),
+  Payment_Type CHAR(64), Company CHAR(64), Pickup_Centroid_Latitude CHAR(20),
+  Pickup_Centroid_Longitude CHAR(20), Pickup_Centroid_Location CHAR(64),
+  Dropoff_Centroid_Latitude CHAR(20),Dropoff_Centroid_Longitude CHAR(20), Dropoff_Centroid_Location CHAR(64))
+  ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY "\;";
+ 
+ 
+-- load data into table from localfile (to HIVE) 
+LOAD DATA LOCAL INPATH 'Taxi_Trips_151MB.csv' INTO TABLE taxis_table;
+
+
+-- create table result
+DROP TABLE result_table4l; 
+CREATE TABLE  result_table4l AS
+SELECT  
+    Pickup_Region_ID, Dropoff_Region_ID, Count(*) AS Total ,
+    CONCAT(ROUND(SUM( CASE WHEN (payment_type="Cash") THEN 1 ELSE 0 END )/Count(*),2)*100,"%") AS Cash,
+    CONCAT(ROUND(SUM( CASE WHEN (payment_type="Credit Card") THEN 1 ELSE 0 END )/Count(*),2)*100,"%") AS Credit_Card 
+    FROM taxis_table
+    WHERE Pickup_Region_ID!="" AND Dropoff_Region_ID!="" AND Trip_Miles!="" AND Trip_Miles!="0"
+    GROUP BY Pickup_Region_ID, Dropoff_Region_ID
+    HAVING AVG (Trip_Miles)>=10
+    ORDER BY Total DESC ;
+
+SELECT * FROM result_table4l limit 10;
+
+-- save result_table4_long 
+insert overwrite local directory 'Ex4l.csv'
+row format delimited
+fields terminated by ','
+
+SELECT * FROM result_table4l ;
+
+
+-- create table result
+DROP TABLE result_table4s; 
+CREATE TABLE  result_table4s AS
+SELECT  
+    Pickup_Region_ID, Dropoff_Region_ID, Count(*) AS Total ,
+    CONCAT(ROUND(SUM( CASE WHEN (payment_type="Cash") THEN 1 ELSE 0 END )/Count(*),2)*100,"%") AS Cash,
+    CONCAT(ROUND(SUM( CASE WHEN (payment_type="Credit Card") THEN 1 ELSE 0 END )/Count(*),2)*100,"%") AS Credit_Card 
+    FROM taxis_table
+    WHERE Pickup_Region_ID!="" AND Dropoff_Region_ID!="" AND Trip_Miles!="" AND Trip_Miles!="0"
+    GROUP BY Pickup_Region_ID, Dropoff_Region_ID
+    HAVING AVG (Trip_Miles)<10
+    ORDER BY Total DESC ;
+
+SELECT * FROM result_table4s limit 10;
+
+-- save result_table4_long 
+insert overwrite local directory 'Ex4s.csv'
+row format delimited
+fields terminated by ','
+
+SELECT * FROM result_table4s LIMIT 10 ;
