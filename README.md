@@ -1,4 +1,4 @@
-# Big Data Processing System
+# Big Data Processing Systems
 
 This repository is about my adventure in learning and applying Big Data Processing Systems. I got my hands dirty with some of the coolest technologies out there like Hadoop, Apache Spark (PySpark, SQL, DataFrames), and Hive. Inside, you can find different scripts and code that explore how to process massive datasets, whether with distributed data processing, speeding things up with in-memory computing, or running SQL-like queries on structured and unstructured data. Spoiler: Spark’s in-memory processing is like adding rocket fuel compared to Hadoop’s more “slow and steady” approach.
 
